@@ -159,7 +159,7 @@ class Piece
   
   def remove_blocked_moves(moves)
     moves.select do |move|
-      @board[move].nil? #|pie| @board[move].color != self.color
+      @board[move].nil?
     end
   end
   
