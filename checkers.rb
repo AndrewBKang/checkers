@@ -27,11 +27,11 @@ class Board
   end
   
   def set_pieces(color,i,board)
-    pos = set_pos(color,i)
-    add_piece(pos,Piece.new(color,pos,board))
+    pos = set_init_pos(color,i)
+    add_to_board(pos,Piece.new(color,pos,board))
   end
   
-  def set_pos(color,i)
+  def set_init_pos(color,i)
     if color == :black 
       return [i/4,i % 8] if (i/4).even?
       [i/4,i % 8 +1]
@@ -41,7 +41,7 @@ class Board
     end
   end
   
-  def add_piece(pos,piece)
+  def add_to_board(pos,piece)
     self[pos] = piece
   end
   
@@ -62,18 +62,19 @@ class Board
   end
   
   def perform_jump(move)
-    #raise ArgumentError.new "InvalidMove" 
-    print self[move.first].jump_moves
-    if self[move.first].jump_moves.include?(move[1])
-    self[move.last] = self[move.first]
-    self[move.first] = nil
-    self[move.last.zip(move.first).map{|a| a.inject(:+)/2}] = nil
-    self[move.last].position = move.last
+    self[move.first] = piece
+    self[move.last] = spot
+    self[move.last.zip(move.first).map{|a| a.inject(:+)/2}] = opp_piece
+    if piece.jump_moves.include?(move.last)
+      self[move.last] = piece
+      self[move.first] = nil
+      opp_piece = nil
+      piece.position = move.last
     end
   end
   
   def perform_step(move)
-    self[move.first],self[moves[1]] = nil,self[move.first]  
+    self[move.first],self[moves[1]] = nil,self[move.first]
   end
   
   def perform_moves!(move_seq)

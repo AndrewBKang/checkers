@@ -41,7 +41,6 @@ class Board
     end
   end
 
-  
   def add_piece(pos,piece)
     self[pos] = piece
     @pieces << piece
@@ -66,16 +65,16 @@ class Board
     end
   end
   
-  def perform_jump(move)
-    #raise ArgumentError.new "InvalidMove" 
-    
+  def perform_jump(move)  
     piece = self[move.first]
     spot = self[move.last]
-    piece_killed = self[move.last.zip(move.first).map{|a| a.inject(:+)/2}]
+    opp_piece_pos = move.last.zip(move.first).map{|a| a.inject(:+)/2}
+    piece_killed = self[opp_piece_pos]
+    
     if piece.jump_moves.include?(move.last)
       self[move.last] = piece
       self[move.first] = nil
-      self[move.last.zip(move.first).map{|a| a.inject(:+)/2}] = nil
+      self[opp_piece_pos] = nil
       piece.position = move.last
       @pieces - [piece_killed]
     end
@@ -107,6 +106,7 @@ class Board
     end
     true
   end
+  
 end
 
 class Piece
@@ -185,11 +185,9 @@ class Checkers
   def turn
     [@player1,@player2].each do |player|
       begin
-        @board.render
         moves = player.move
-        unless @board[moves.first].color == player.color
-          raise ArgumentError.new "wrong piece"
-        end
+        right_color = (@board[moves.first].color == player.color)
+        raise ArgumentError.new "wrong piece" unless right_color
         @board.perform_moves!(moves) 
       rescue ArgumentError => e
         puts "Error: #{e}"
@@ -201,11 +199,10 @@ class Checkers
   def play
     
     until @board.game_over?
+      @board.render
       turn
     end
-    
     "gameover"
-    
   end
   
 end
@@ -221,22 +218,9 @@ class Player
   def move
     puts "move:"
     string_moves = gets.split(' ')
-    raise ArgumentError.new "type something!" if string_moves == []
-    moves = string_moves.map{|move| move.split(',').map{|n| n.to_i}}
-    moves
+    error = "type more than two coordinates"
+    raise ArgumentError.new error if !string_moves.size >= 2 
+    string_moves.map{|move| move.split(',').map{|n| n.to_i}}
   end
   
-  
 end
-# 
-# board = Board.new
-# piece = Piece.new(:red,[5,1],board)
-# piece2 = Piece.new(:black,[4,2],board)
-# board[[5,1]] = piece
-# board[[4,2]] = piece2
-# board[[1,1]] = nil
-# print piece.jump_moves
-# board.render
-# print board.perform_moves!([[5,1],[3,3],[1,1]])
-# print piece.jump_moves
-# board.render
