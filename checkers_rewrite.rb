@@ -1,9 +1,9 @@
 class Board
-  
-  attr_accessor :grid
+  attr_accessor :grid, :pieces
   
   def initialize
     @grid = Array.new(8){Array.new(8)}  
+    @pieces = []
     set_board
     render
   end
@@ -33,47 +33,57 @@ class Board
   
   def set_pos(color,i)
     if color == :black 
-      return [i/4,i % 8] if (i/4).even?
-      [i/4,i % 8 +1]
+      return [i/4,i * 2 % 8] if (i/4).even?
+      [i/4,i * 2 % 8 + 1]
     else 
-      return [7-i/4,i%8+1]  if (i/4).even?
-      [i/4,i%8]
+      return [7 - i/4,i * 2 % 8 + 1]  if (i/4).even?
+      [7 - i/4, i * 2 % 8]
     end
   end
+
   
   def add_piece(pos,piece)
     self[pos] = piece
+    @pieces << piece
   end
-  
+
   def render
-    @grid.each do |row|
+    letters = (0..7).to_a
+    print "   0  1  2  3  4  5  6  7\n"
+    @grid.each_with_index do |row,index|
       display_row = row.map do |piece| 
         if piece.nil?
-          ' ' 
+          '_' 
         elsif piece.color == :black
           'b'
         elsif piece.color == :red
           'r'
         end
       end
-      print "#{display_row.join("  ")}\n" if @grid.index(row).even?
-      print "#{display_row.join("  ")}\n" if @grid.index(row).odd?
+      print 
+      print "#{letters[index]}  #{display_row.join("  ")}\n" if @grid.index(row).even?
+      print "#{letters[index]}  #{display_row.join("  ")}\n" if @grid.index(row).odd?
     end
   end
   
   def perform_jump(move)
     #raise ArgumentError.new "InvalidMove" 
-    print self[move.first].jump_moves
-    if self[move.first].jump_moves.include?(move[1])
-    self[move.last] = self[move.first]
-    self[move.first] = nil
-    self[move.last.zip(move.first).map{|a| a.inject(:+)/2}] = nil
-    self[move.last].position = move.last
+    
+    piece = self[move.first]
+    spot = self[move.last]
+    piece_killed = self[move.last.zip(move.first).map{|a| a.inject(:+)/2}]
+    if piece.jump_moves.include?(move.last)
+      self[move.last] = piece
+      self[move.first] = nil
+      self[move.last.zip(move.first).map{|a| a.inject(:+)/2}] = nil
+      piece.position = move.last
+      @pieces - [piece_killed]
     end
   end
   
   def perform_step(move)
-    self[move.first],self[moves[1]] = nil,self[move.first]  
+    self[move.first],self[move[1]] = nil,self[move.first]
+    self[move[1]].position = move[1]
   end
   
   def perform_moves!(move_seq)
@@ -89,19 +99,15 @@ class Board
     end
   end
   
-  def valid_mov_seq?(piece,move_seq)
-    trial_board = self.dup
-    trial_piece = piece.dup
-    begin
-      perform_moves
+  def game_over?
+    color = @pieces[0].color
+    @pieces.each do |piece|
+      return false if color != piece.color
+      color = piece.color
     end
-      
-    
+    true
   end
-  
 end
-
-
 
 class Piece
   
@@ -116,9 +122,9 @@ class Piece
   def directions 
     row = position[0]
     if color == :black
-      row.even? ? [[1,-1],[1,0]] : [[1,1],[1,0]] 
+      [[1,1],[1,-1]] 
     else
-      row.even? ? [[-1,-1],[-1,0]] : [[-1,1],[-1,0]]
+      [[-1,1],[-1,-1]]
     end
   end
   
@@ -138,11 +144,6 @@ class Piece
     moves
   end
   
-  def valid_moves
-    return jump_moves unless jump_moves.nil?
-    step_moves
-  end
-  
   def moves_on_board
     moves = []
     directions.each do |direction|
@@ -153,7 +154,7 @@ class Piece
   end
   
   def on_board?(coord)
-    (0..7).include?(coord[0]) && (0..3).include?(coord[1])
+    (0..7).include?(coord[0]) && (0..7).include?(coord[1])
   end
   
   def remove_blocked_moves(moves)
@@ -163,7 +164,7 @@ class Piece
   end
   
   def opponents_piece?(move)
-    return false if @board[move].nil?
+    return false if @board[move].nil? || @board[move].color == @color
     true
   end
   
@@ -172,7 +173,62 @@ class Piece
   end
   
 end
+  
+class Checkers
+  
+  def initialize
+    @board = Board.new
+    @player1 = Player.new(:red)
+    @player2 = Player.new(:black)
+  end
+  
+  def turn
+    [@player1,@player2].each do |player|
+      begin
+        @board.render
+        moves = player.move
+        unless @board[moves.first].color == player.color
+          raise ArgumentError.new "wrong piece"
+        end
+        @board.perform_moves!(moves) 
+      rescue ArgumentError => e
+        puts "Error: #{e}"
+        retry
+      end
+    end
+  end
+  
+  def play
+    
+    until @board.game_over?
+      turn
+    end
+    
+    "gameover"
+    
+  end
+  
+end
 
+class Player
+  
+  attr_accessor :color
+  
+  def initialize(color)
+    @color = color
+  end
+  
+  def move
+    puts "move:"
+    string_moves = gets.split(' ')
+    raise ArgumentError.new "type something!" if string_moves == []
+    moves = string_moves.map{|move| move.split(',').map{|n| n.to_i}}
+    moves
+  end
+  
+  
+end
+# 
 # board = Board.new
 # piece = Piece.new(:red,[5,1],board)
 # piece2 = Piece.new(:black,[4,2],board)
@@ -180,20 +236,7 @@ end
 # board[[4,2]] = piece2
 # board[[1,1]] = nil
 # print piece.jump_moves
-# print board.perform_moves!([[5,1],[3,3]])
+# board.render
+# print board.perform_moves!([[5,1],[3,3],[1,1]])
 # print piece.jump_moves
 # board.render
-
-class Checkers
-  
-  def initialize
-    @board = Board.new
-  end
-  
-  def play
-    
-  end
-  
-  
-  
-end
