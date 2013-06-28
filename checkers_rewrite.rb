@@ -1,41 +1,49 @@
+# REV: Overall a really good job. Method names were nicely worded and standardized. Maybe could have some methods be private. Could add some user interface stuff and this will be awesome!! :D
+
+
+
 class Board
   attr_accessor :grid, :pieces
-  
+
   def initialize
-    @grid = Array.new(8){Array.new(8)}  
+    @grid = Array.new(8){Array.new(8)}
     @pieces = []
     set_board
     render
   end
-  
+
   def [](pos)
     i,j = pos
     @grid[i][j]
   end
-  
+
   def []=(pos,piece)
     i,j = pos
     @grid[i][j] = piece
   end
-  
+
+  # REV: Your main methods look really awesome. Really concise.
+
   def set_board
     [:red,:black].each do |color|
       12.times do |i|
+        # REV: You could've made this self.set_pieces(color, i)
         set_pieces(color,i,self)
       end
     end
   end
-  
+
   def set_pieces(color,i,board)
     pos = set_pos(color,i)
+    # REV: Then change this to add_piece(pos,Piece.new(color,pos,self))
     add_piece(pos,Piece.new(color,pos,board))
   end
-  
+
   def set_pos(color,i)
-    if color == :black 
+    if color == :black
       return [i/4,i * 2 % 8] if (i/4).even?
       [i/4,i * 2 % 8 + 1]
-    else 
+    else
       return [7 - i/4,i * 2 % 8 + 1]  if (i/4).even?
       [7 - i/4, i * 2 % 8]
     end
@@ -50,27 +58,27 @@ class Board
     letters = (0..7).to_a
     print "   0  1  2  3  4  5  6  7\n"
     @grid.each_with_index do |row,index|
-      display_row = row.map do |piece| 
+      display_row = row.map do |piece|
         if piece.nil?
-          '_' 
+          '_'
         elsif piece.color == :black
           'b'
         elsif piece.color == :red
           'r'
         end
       end
-      print 
+      print
       print "#{letters[index]}  #{display_row.join("  ")}\n" if @grid.index(row).even?
       print "#{letters[index]}  #{display_row.join("  ")}\n" if @grid.index(row).odd?
     end
   end
-  
-  def perform_jump(move)  
+
+  def perform_jump(move)
     piece = self[move.first]
     spot = self[move.last]
     opp_piece_pos = move.last.zip(move.first).map{|a| a.inject(:+)/2}
     piece_killed = self[opp_piece_pos]
-    
+
     if piece.jump_moves.include?(move.last)
       self[move.last] = piece
       self[move.first] = nil
@@ -79,13 +87,21 @@ class Board
       @pieces - [piece_killed]
     end
   end
-  
+
   def perform_step(move)
+    # REV: Why use move.first instead of move[0]? its shorter and matches the rest of your code.
     self[move.first],self[move[1]] = nil,self[move.first]
     self[move[1]].position = move[1]
   end
-  
+
   def perform_moves!(move_seq)
+    # REV: maybe try something like this?
+    #
+    # start_pos = move_seq[0]
+    # move_seq[1..-1].each do |move|
+    #   ....
+    # end
+
     if self[move_seq.first].step_moves.include?(move_seq.last)
       perform_step(move_seq)
     elsif self[move_seq.first].jump_moves.include?(move_seq[1])
@@ -97,7 +113,7 @@ class Board
       raise ArgumentError.new "InvalidMove"
     end
   end
-  
+
   def game_over?
     color = @pieces[0].color
     @pieces.each do |piece|
@@ -106,33 +122,33 @@ class Board
     end
     true
   end
-  
+
 end
 
 class Piece
-  
+
   attr_accessor :color, :position
-  
+
   def initialize(color,pos,board)
     @color = color
     @position = pos
     @board = board
   end
-  
-  def directions 
+
+  def directions
     row = position[0]
     if color == :black
-      [[1,1],[1,-1]] 
+      [[1,1],[1,-1]]
     else
       [[-1,1],[-1,-1]]
     end
   end
-  
+
   def step_moves
     moves = moves_on_board
     remove_blocked_moves(moves)
   end
-  
+
   def jump_moves
     moves = []
     directions.each do |direction|
@@ -143,7 +159,7 @@ class Piece
     end
     moves
   end
-  
+
   def moves_on_board
     moves = []
     directions.each do |direction|
@@ -152,75 +168,75 @@ class Piece
     end
     moves
   end
-  
+
   def on_board?(coord)
+    # REV: Could use coord[0].between?(0,7) not that big of a difference. its just easier to read.
     (0..7).include?(coord[0]) && (0..7).include?(coord[1])
   end
-  
+
   def remove_blocked_moves(moves)
     moves.select do |move|
       @board[move].nil?
     end
   end
-  
+
   def opponents_piece?(move)
     return false if @board[move].nil? || @board[move].color == @color
     true
   end
-  
+
   def move_coords(array1,array2)
     array1.zip(array2).map{|array| array.inject(:+)}
   end
-  
+
 end
-  
+
 class Checkers
-  
+
   def initialize
     @board = Board.new
     @player1 = Player.new(:red)
     @player2 = Player.new(:black)
   end
-  
+
   def turn
     [@player1,@player2].each do |player|
       begin
         moves = player.move
         right_color = (@board[moves.first].color == player.color)
         raise ArgumentError.new "wrong piece" unless right_color
-        @board.perform_moves!(moves) 
+        @board.perform_moves!(moves)
       rescue ArgumentError => e
-        puts "Error: #{e}"
+        puts "Error: #{e}" # could use puts e
         retry
       end
     end
   end
-  
+
   def play
-    
     until @board.game_over?
       @board.render
       turn
     end
     "gameover"
   end
-  
+
 end
 
 class Player
-  
+
   attr_accessor :color
-  
+
   def initialize(color)
     @color = color
   end
-  
+
   def move
     puts "move:"
     string_moves = gets.split(' ')
     error = "type more than two coordinates"
-    raise ArgumentError.new error if !string_moves.size >= 2 
+    raise ArgumentError.new error if !string_moves.size >= 2
     string_moves.map{|move| move.split(',').map{|n| n.to_i}}
   end
-  
+
 end
